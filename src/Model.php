@@ -12,7 +12,6 @@ use Dabl\Adapter\DABLPDO;
 use Dabl\Adapter\DBPostgres;
 use Dabl\Adapter\DBRedshift;
 use Dabl\Query\Query;
-use Dabl\Query\QueryModelIterator;
 use Dabl\Query\QueryStatement;
 use InvalidArgumentException;
 use JsonSerializable;
