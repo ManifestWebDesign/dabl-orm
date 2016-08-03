@@ -8,6 +8,7 @@
  */
 
 namespace Dabl\Orm;
+
 use Dabl\Adapter\DABLPDO;
 use Dabl\Adapter\DBPostgres;
 use Dabl\Adapter\DBRedshift;
@@ -219,7 +220,6 @@ abstract class Model implements JsonSerializable {
 
 	/**
 	 * @return static
-
 	 */
 	static function create() {
 		return new static();
@@ -1074,7 +1074,7 @@ abstract class Model implements JsonSerializable {
 	 * Array keys match column names.
 	 * @return array
 	 */
-    function jsonSerialize() {
+	function jsonSerialize() {
 		$array = $this->toArray();
 		foreach (static::$_columnTypes as $column => &$type) {
 			if (!isset($array[$column])) {
@@ -1106,7 +1106,7 @@ abstract class Model implements JsonSerializable {
 			}
 		}
 		return $array;
-    }
+	}
 
 	/**
 	 * Sets whether to use cached results for foreign keys or to execute
@@ -1353,7 +1353,7 @@ abstract class Model implements JsonSerializable {
 				$id = $result->fetchColumn(0);
 			} elseif ($conn->isGetIdAfterInsert()) {
 				$id = $conn->lastInsertId();
-				if(empty($id) && $conn instanceof DBRedshift) {
+				if (empty($id) && $conn instanceof DBRedshift) {
 					$id = $conn->query('SELECT MAX(' . $conn->quoteIdentifier($pk) . ") FROM $quoted_table")->fetchColumn();
 				}
 			}
