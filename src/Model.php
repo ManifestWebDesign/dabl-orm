@@ -19,6 +19,7 @@ use JsonSerializable;
 use PDO;
 use PDOStatement;
 use RuntimeException;
+use DateTime;
 
 /**
  * @package dabl
@@ -383,6 +384,10 @@ abstract class Model implements JsonSerializable {
 				$v = static::coerceTemporalValue($v, $column_type, $conn);
 			}
 			return $value;
+		}
+
+		if ($value instanceof DateTime) {
+			$value = $value->getTimestamp();
 		}
 
 		$timestamp = is_int($value) ? $value : strtotime($value);
