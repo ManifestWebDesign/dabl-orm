@@ -10,6 +10,7 @@
 namespace Dabl\Orm;
 
 use Dabl\Adapter\DABLPDO;
+use Dabl\Adapter\DBMSSQL;
 use Dabl\Adapter\DBPostgres;
 use Dabl\Adapter\DBRedshift;
 use Dabl\Query\Query;
@@ -457,6 +458,8 @@ abstract class Model implements JsonSerializable {
 	}
 
 	/**
+	 * Given an array of params, construct a query where the keys are used as column names
+	 * and values as query parameters. Will try to do fully-qualified names.
 	 * @return Query
 	 */
 	static function getQuery(array $params = array(), Query $q = null) {
@@ -1049,6 +1052,9 @@ abstract class Model implements JsonSerializable {
 	 * @return static
 	 */
 	function fromArray($array) {
+		if (!is_array($array) && !is_object($array)) {
+			throw new RuntimeException('Argument must be array or object');
+		}
 		foreach ($array as $column => &$v) {
 			if (
 				is_string($column) === false
@@ -1339,7 +1345,13 @@ abstract class Model implements JsonSerializable {
 		}
 
 		$quoted_table = $conn->quoteIdentifier(static::getTableName(), true);
-		$query_s = 'INSERT INTO ' . $quoted_table . ' (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ') ';
+		$query_s = 'INSERT INTO ' . $quoted_table . ' (' . implode(', ', $fields) . ')';
+
+		if ($pk && $this->isAutoIncrement() && $conn instanceof DBMSSQL) {
+			$query_s .= " OUTPUT inserted.$pk";
+		}
+
+		$query_s .= ' VALUES (' . implode(', ', $placeholders) . ') ';
 
 		if ($pk && $this->isAutoIncrement() && $conn instanceof DBPostgres) {
 			$query_s .= ' RETURNING ' . $conn->quoteIdentifier($pk, true);
@@ -1354,7 +1366,7 @@ abstract class Model implements JsonSerializable {
 
 		if ($pk && $this->isAutoIncrement()) {
 			$id = null;
-			if ($conn instanceof DBPostgres) {
+			if (($conn instanceof DBPostgres) || ($conn instanceof DBMSSQL)) {
 				$id = $result->fetchColumn(0);
 			} elseif ($conn->isGetIdAfterInsert()) {
 				$id = $conn->lastInsertId();
