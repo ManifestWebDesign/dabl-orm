@@ -459,7 +459,7 @@ class ModelTest extends PHPUnit_Framework_TestCase {
 	public function testGetQuery() {
 		$q = TestModel::getQuery(array(
 			'foo' => 'bar',
-			'id' => 1,
+			'test_model.id' => 1,
 			'limit' => 10
 		));
 
@@ -470,7 +470,7 @@ class ModelTest extends PHPUnit_Framework_TestCase {
 		foreach ($q->getWhere()->getAnds() as $index => $and) {
 			$and->setConnection($con);
 			if ($index === 0) {
-				$this->assertSame($con->quoteIdentifier('id') . ' = 1', $and . '');
+				$this->assertSame($con->quoteIdentifier('test_model.id') . ' = 1', $and . '');
 			} else {
 				$this->fail('There should only be 1 where condition.');
 			}

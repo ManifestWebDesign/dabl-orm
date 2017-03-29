@@ -468,14 +468,23 @@ abstract class Model implements JsonSerializable {
 
 		$q = $q ? clone $q : new $query_class;
 
-		if (!$q->getTable()) {
-			$q->setTable(static::getTableName());
+		$tablename = $q->getTable();
+		if (!$tablename) {
+			$tablename = static::getTableName();
+			$q->setTable($tablename);
+		}
+
+		// If an alias has been set, use that for fully-qualified names, otherwise use the table name
+		$alias = $q->getAlias();
+		if (!$alias) {
+			$alias = $tablename;
 		}
 
 		// filters
 		foreach ($params as $key => &$param) {
 			if (static::hasColumn($key)) {
-				$q->add($key, $param);
+				$column = static::normalizeColumnName($key);
+				$q->add("$alias.$column", strtolower($param) === 'null' ? null : $param);
 			}
 		}
 
@@ -869,6 +878,10 @@ abstract class Model implements JsonSerializable {
 			) {
 				$r->setUpdated(time());
 			}
+
+//			if ($r->isNew() && $r->hasColumn('id')) {
+//				$r->setId(strtoupper(ApplicationModel::guidv4()));
+//			}
 
 			foreach ($columns as &$column) {
 				if ($auto_increment && $column === $pk) {
