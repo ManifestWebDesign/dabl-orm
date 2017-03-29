@@ -11,7 +11,7 @@
 	],
 	"require": {
 		"dabl/adapter": "1.1.*",
-		"dabl/query": "1.0.*"
+		"dabl/query": "1.1.*"
 	},
 	"require-dev": {
 		"phpunit/phpunit": "4.8.*"
