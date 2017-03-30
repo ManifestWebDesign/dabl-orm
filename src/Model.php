@@ -879,10 +879,6 @@ abstract class Model implements JsonSerializable {
 				$r->setUpdated(time());
 			}
 
-//			if ($r->isNew() && $r->hasColumn('id')) {
-//				$r->setId(strtoupper(ApplicationModel::guidv4()));
-//			}
-
 			foreach ($columns as &$column) {
 				if ($auto_increment && $column === $pk) {
 					continue;
