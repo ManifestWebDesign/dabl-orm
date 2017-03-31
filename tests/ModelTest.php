@@ -25,23 +25,7 @@ class TestModel extends Model {
 		'id',
 	);
 
-	protected static $_primaryKey = 'id';
-
 	public static $_columns = array(
-		'test_model.id',
-		'test_model.true_false',
-		'test_model.created',
-		'test_model.updated'
-	);
-
-	public static $_columnNames = array(
-		'id',
-		'true_false',
-		'created',
-		'updated'
-	);
-
-	public static $_columnTypes = array(
 		'id' => Model::COLUMN_TYPE_INTEGER,
 		'true_false' => Model::COLUMN_TYPE_BOOLEAN,
 		'created' => Model::COLUMN_TYPE_TIMESTAMP,
@@ -118,7 +102,7 @@ class TestModel2 extends Model {
 		'integerTimestamp',
 	);
 
-	public static $_columnTypes = array(
+	public static $_columns = array(
 		'nullInteger' => Model::COLUMN_TYPE_INTEGER,
 		'emptyInteger' => Model::COLUMN_TYPE_INTEGER,
 		'integer' => Model::COLUMN_TYPE_INTEGER,
@@ -346,21 +330,33 @@ class ModelTest extends PHPUnit_Framework_TestCase {
 	 * @covers Model::getColumnNames
 	 */
 	public function testGetColumnNames() {
-		$this->assertEquals(TestModel::$_columnNames, TestModel::getColumnNames());
+		$column_names = array(
+			'id' ,
+			'true_false',
+			'created',
+			'updated'
+		);
+		$this->assertEquals($column_names, TestModel::getColumnNames());
 	}
 
 	/**
 	 * @covers Model::getColumns
 	 */
 	public function testGetColumns() {
-		$this->assertEquals(TestModel::$_columns, TestModel::getColumns());
+		$column_names = array(
+			'test_model.id' ,
+			'test_model.true_false',
+			'test_model.created',
+			'test_model.updated'
+		);
+		$this->assertEquals($column_names, TestModel::getColumns());
 	}
 
 	/**
-	 * @covers Model::getColumnTypes
+	 * @covers Model::getColumns
 	 */
 	public function testGetColumnTypes() {
-		$this->assertEquals(TestModel::$_columnTypes, TestModel::getColumnTypes());
+		$this->assertEquals(TestModel::$_columns, TestModel::getColumnTypes());
 	}
 
 	/**

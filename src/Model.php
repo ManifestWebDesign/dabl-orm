@@ -141,34 +141,16 @@ abstract class Model implements JsonSerializable {
 	protected static $_primaryKeys;
 
 	/**
-	 * string name of the primary key column
-	 * @var string
-	 */
-	protected static $_primaryKey;
-
-	/**
 	 * true if primary key is an auto-increment column
 	 * @var bool
 	 */
 	protected static $_isAutoIncrement = false;
 
 	/**
-	 * array of all fully-qualified(table.column) columns
-	 * @var string[]
-	 */
-	protected static $_columns;
-
-	/**
-	 * array of all column names
-	 * @var string[]
-	 */
-	protected static $_columnNames;
-
-	/**
 	 * array of all column types
 	 * @var string[]
 	 */
-	protected static $_columnTypes;
+	protected static $_columns;
 
 	/**
 	 * Array to contain names of modified columns
@@ -195,6 +177,24 @@ abstract class Model implements JsonSerializable {
 	 * Errors from the validate() step of saving
 	 */
 	protected $_validationErrors = array();
+
+	/**
+	 * Cache of lower case column names. Just for performance.
+	 * @var string[]
+	 */
+	private static $_lowerCaseColumns = array();
+
+	/**
+	 * Cache of column names. Just for performance.
+	 * @var string[]
+	 */
+	private static $_columnNames = array();
+
+	/**
+	 * Cache of fully qualified column names. Just for performance.
+	 * @var string[]
+	 */
+	private static $_qualifiedColumns = array();
 
 	public function __toString() {
 		return get_class($this) . implode('-', $this->getPrimaryKeyValues());
@@ -289,7 +289,12 @@ abstract class Model implements JsonSerializable {
 	 * @return array
 	 */
 	static function getColumnNames() {
-		return static::$_columnNames;
+		$class = get_called_class();
+		if (!isset(self::$_columnNames[$class])) {
+			self::$_columnNames[$class] = array_keys(static::$_columns);
+		}
+
+		return self::$_columnNames[$class];
 	}
 
 	/**
@@ -297,7 +302,14 @@ abstract class Model implements JsonSerializable {
 	 * @return array
 	 */
 	static function getColumns() {
-		return static::$_columns;
+		$class = get_called_class();
+		if (!isset(self::$_qualifiedColumns[$class])) {
+			self::$_qualifiedColumns[$class] = array_map(function($column_name) {
+				return static::getTableName() . '.' . $column_name;
+			}, array_keys(static::$_columns));
+		}
+
+		return self::$_qualifiedColumns[$class];
 	}
 
 	/**
@@ -305,7 +317,7 @@ abstract class Model implements JsonSerializable {
 	 * @return array
 	 */
 	static function getColumnTypes() {
-		return static::$_columnTypes;
+		return static::$_columns;
 	}
 
 	/**
@@ -313,10 +325,8 @@ abstract class Model implements JsonSerializable {
 	 * @return string
 	 */
 	static function getColumnType($column_name) {
-		return static::$_columnTypes[static::normalizeColumnName($column_name)];
+		return static::$_columns[static::normalizeColumnName($column_name)];
 	}
-
-	private static $_lowerCaseColumns = array();
 
 	/**
 	 * @return bool
@@ -324,7 +334,7 @@ abstract class Model implements JsonSerializable {
 	static function hasColumn($column_name) {
 		$class = get_called_class();
 		if (!isset(self::$_lowerCaseColumns[$class])) {
-			self::$_lowerCaseColumns[$class] = array_map('strtolower', static::$_columnNames);
+			self::$_lowerCaseColumns[$class] = array_map('strtolower', static::getColumnNames());
 		}
 		return in_array(
 			strtolower(static::normalizeColumnName($column_name)),
@@ -348,7 +358,10 @@ abstract class Model implements JsonSerializable {
 	 * @return array
 	 */
 	static function getPrimaryKey() {
-		return static::$_primaryKey;
+		if (count(static::$_primaryKeys) === 1) {
+			return static::$_primaryKeys[0];
+		}
+		return null;
 	}
 
 	/**
@@ -419,7 +432,7 @@ abstract class Model implements JsonSerializable {
 	 * @return static
 	 */
 	static function retrieveByColumn($field, $value) {
-		$pk = static::$_primaryKey;
+		$pk = static::getPrimaryKey();
 		if ($pk) {
 			if ($field === $pk) {
 				return static::retrieveByPK($value);
@@ -758,7 +771,7 @@ abstract class Model implements JsonSerializable {
 	 * @param int $startcol
 	 */
 	function fromNumericResultArray($values, &$startcol) {
-		foreach (static::$_columnNames as &$column_name) {
+		foreach (static::$_columns as $column_name => &$type) {
 			$this->{$column_name} = $values[$startcol++];
 		}
 		if (static::$_primaryKeys && !$this->hasPrimaryKeyValues()) {
@@ -774,7 +787,7 @@ abstract class Model implements JsonSerializable {
 	 * @param array $values
 	 */
 	function fromAssociativeResultArray($values) {
-		foreach (static::$_columnNames as &$column_name) {
+		foreach (static::$_columns as $column_name => &$type) {
 			if (array_key_exists($column_name, $values)) {
 				$this->{$column_name} = $values[$column_name];
 			}
@@ -840,12 +853,12 @@ abstract class Model implements JsonSerializable {
 			return 0;
 		}
 		$conn = static::getConnection();
-		$columns = static::$_columnNames;
+		$columns = static::getColumnNames();
 		$quoted_table = $conn->quoteIdentifier(static::getTableName(), true);
 
 		$auto_increment = static::isAutoIncrement();
 		if ($auto_increment) {
-			$pk = static::$_primaryKey;
+			$pk = static::getPrimaryKey();
 			foreach ($columns as $index => &$column_name) {
 				if ($column_name === $pk) {
 					unset($columns[$index]);
@@ -1067,7 +1080,7 @@ abstract class Model implements JsonSerializable {
 		foreach ($array as $column => &$v) {
 			if (
 				is_string($column) === false
-				|| !isset(static::$_columnTypes[$column])
+				|| !isset(static::$_columns[$column])
 			) {
 				continue;
 			}
@@ -1083,8 +1096,9 @@ abstract class Model implements JsonSerializable {
 	 */
 	function toArray() {
 		$array = array();
-		foreach (static::$_columnNames as &$column)
-			$array[$column] = $this->{'get' . $column}();
+		foreach (static::$_columns as $column_name => &$type) {
+			$array[$column_name] = $this->{'get' . $column_name}();
+		}
 		return $array;
 	}
 
@@ -1096,11 +1110,11 @@ abstract class Model implements JsonSerializable {
 	 */
 	function jsonSerialize() {
 		$array = $this->toArray();
-		foreach (static::$_columnTypes as $column => &$type) {
-			if (!isset($array[$column])) {
+		foreach (static::$_columns as $column_name => &$type) {
+			if (!isset($array[$column_name])) {
 				continue;
 			}
-			$value = &$array[$column];
+			$value = &$array[$column_name];
 
 			if ($type === Model::COLUMN_TYPE_BOOLEAN) {
 				if (0 === $value) {
@@ -1113,14 +1127,14 @@ abstract class Model implements JsonSerializable {
 				|| $type === Model::COLUMN_TYPE_INTEGER_TIMESTAMP
 			) {
 				if (!$value) {
-					$array[$column] = null;
+					$array[$column_name] = null;
 					continue;
 				}
 				if (!is_int($value)) {
 					$value = strtotime($value);
 				}
 				if (!is_int($value)) {
-					throw new RuntimeException('Error parsing date "' . $array[$column] . '"');
+					throw new RuntimeException('Error parsing date "' . $array[$column_name] . '"');
 				}
 				$value = date('c', $value);
 			}
@@ -1320,15 +1334,15 @@ abstract class Model implements JsonSerializable {
 	 * @return static
 	 */
 	function castInts() {
-		foreach (static::$_columnTypes as $column => &$type) {
-			if ($this->{$column} === null || !static::isIntegerType($type)) {
+		foreach (static::$_columns as $column_name => &$type) {
+			if ($this->{$column_name} === null || !static::isIntegerType($type)) {
 				continue;
 			}
-			if ('' === $this->{$column}) {
-				$this->{$column} = null;
+			if ('' === $this->{$column_name}) {
+				$this->{$column_name} = null;
 				continue;
 			}
-			$this->{$column} = (int) $this->{$column};
+			$this->{$column_name} = (int) $this->{$column_name};
 		}
 		return $this;
 	}
@@ -1339,16 +1353,16 @@ abstract class Model implements JsonSerializable {
 	 */
 	protected function insert() {
 		$conn = static::getConnection();
-		$pk = static::$_primaryKey;
+		$pk = static::getPrimaryKey();
 
 		$fields = array();
 		$values = array();
 		$placeholders = array();
-		foreach (static::$_columnNames as &$column) {
-			$value = $this->$column;
-			if ($value === null && !$this->isColumnModified($column))
+		foreach (static::$_columns as $column_name => &$type) {
+			$value = $this->$column_name;
+			if ($value === null && !$this->isColumnModified($column_name))
 				continue;
-			$fields[] = $conn->quoteIdentifier($column, true);
+			$fields[] = $conn->quoteIdentifier($column_name, true);
 			$values[] = $value;
 			$placeholders[] = '?';
 		}
