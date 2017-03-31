@@ -556,7 +556,7 @@ abstract class Model implements JsonSerializable {
 			return null;
 		}
 
-		$pk_value = strval($pk_value);
+		$pk_value = (string) $pk_value;
 		if (isset(static::$_instancePool[$pk_value])) {
 			return static::$_instancePool[$pk_value];
 		}
