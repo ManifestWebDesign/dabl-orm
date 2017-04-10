@@ -17,6 +17,9 @@
 		"phpunit/phpunit": "4.8.*"
 	},
 	"autoload": {
+		"files": [
+			"src/shim/JsonSerializable.php"
+		],
 		"psr-4": {
 			"Dabl\\Orm\\": "src"
 		}
