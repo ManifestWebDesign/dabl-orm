@@ -304,8 +304,9 @@ abstract class Model implements JsonSerializable {
 	static function getColumns() {
 		$class = get_called_class();
 		if (!isset(self::$_qualifiedColumns[$class])) {
-			self::$_qualifiedColumns[$class] = array_map(function($column_name) {
-				return static::getTableName() . '.' . $column_name;
+			$table = static::getTableName();
+			self::$_qualifiedColumns[$class] = array_map(function($column_name) use ($table) {
+				return $table . '.' . $column_name;
 			}, array_keys(static::$_columns));
 		}
 
