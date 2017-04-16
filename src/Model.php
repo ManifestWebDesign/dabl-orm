@@ -1448,6 +1448,7 @@ abstract class Model implements JsonSerializable {
 	/**
 	 * @param string $foreign_table
 	 * @param string $foreign_column
+	 * @param string $local_column
 	 * @param Query $q
 	 * @return Query
 	 */
@@ -1459,12 +1460,16 @@ abstract class Model implements JsonSerializable {
 		$column = "$foreign_table.$foreign_column";
 		if ($q) {
 			$q = clone $q;
+			if (!$q->getTable()) {
+				$q->setTable($foreign_table);
+			}
+
 			$alias = $q->getAlias();
 			if ($alias && $foreign_table == $q->getTable()) {
 				$column = "$alias.$foreign_column";
 			}
 		} else {
-			$q = new Query;
+			$q = new Query($foreign_table);
 		}
 		$q->add($column, $value);
 		return $q;
